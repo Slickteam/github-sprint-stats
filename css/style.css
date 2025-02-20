@@ -560,3 +560,24 @@ option:checked {
   background-color: rgba(215, 213, 213, 0.83);
   color: #000;
 }
+
+tr:hover {
+  background-color: rgba(148, 200, 255, 0.83);
+}
+
+.no-estimate {
+  background: #989898;
+}
+
+.less-time {
+  background: #99ff99;
+}
+
+.more-time {
+  background: #ff9999;
+}
+
+.link {
+  text-decoration: underline;
+  font-weight: bold;
+}
