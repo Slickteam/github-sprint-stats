@@ -29,11 +29,27 @@
   </div>
 </nav>
 <section class="bg-white border-b py-8" style="margin-top: 10px;">
-  <div class="container max-w-8xl mx-auto m-8">
-    <table id="statsTable">
+  <div class="container max-w-8xl mx-auto m-8" id="loading">
+    <span>Chargement des données</span>
+  </div>
+  <div class="container max-w-8xl mx-auto m-8 grid gap-4 grid-cols-2" id="filter-section" style="display: none">
+    <div>
+      <label for="sprint" class="mr-8">Sprint</label>
+      <select id="sprint" class="form-select">
+        <option value="">Sélectionner un sprint</option>
+      </select>
+    </div>
+    <div>
+      <label for="assignee" class="mr-8">Personne</label>
+      <select id="assignee" class="form-select">
+        <option value="">Sélectionner une personne</option>
+      </select>
+    </div>
+  </div>
+  <div class="container max-w-8xl mx-auto m-8" id="sprintStats" style="display: none">
+    <table id="sprintStatsTable">
       <thead>
       <tr>
-        <th>Sprint</th>
         <th>ID</th>
         <th>Titre</th>
         <th>Personne assignée</th>
@@ -41,8 +57,50 @@
         <th>Temps passé</th>
       </tr>
       </thead>
-      <tbody>
-      <!-- Les données seront insérées ici -->
+      <tbody id="sprintStatsTableData">
+      </tbody>
+    </table>
+  </div>
+  <div class="container max-w-8xl mx-auto m-8" id="assigneeStats" style="display: none">
+    <h3>Global</h3>
+    <div class="container max-w-8xl mx-auto m-8 grid gap-4 grid-cols-3">
+      <div>
+        <label for="assigneeTotalEstime" class="mr-8">Total estimé</label>
+        <input id="assigneeTotalEstime" value="" readonly />
+      </div>
+      <div>
+        <label for="assigneeTotalPasse" class="mr-8">Total passé</label>
+        <input id="assigneeTotalPasse" value="" readonly />
+      </div>
+      <div>
+        <label for="assigneeMoyenneEcart" class="mr-8">Moyenne écart</label>
+        <input id="assigneeMoyenneEcart" value="" readonly />
+      </div>
+    </div>
+    <h3>Par sprint</h3>
+    <table id="assigneeSprintTable">
+      <thead>
+      <tr>
+        <th>Sprint</th>
+        <th>Temps estimé</th>
+        <th>Temps passé</th>
+      </tr>
+      </thead>
+      <tbody id="assigneeSprintTableData">
+      </tbody>
+    </table>
+    <h3>Détails</h3>
+    <table id="assigneeStatsTable">
+      <thead>
+      <tr>
+        <th>Sprint</th>
+        <th>ID</th>
+        <th>Titre</th>
+        <th>Temps estimé</th>
+        <th>Temps passé</th>
+      </tr>
+      </thead>
+      <tbody id="assigneeStatsTableData">
       </tbody>
     </table>
   </div>
@@ -63,7 +121,7 @@
         <input id="repoName" type="text" placeholder="Enter GitHub repo name" name="url" class="col-span-3" required>
         <div class="container"
              style="background-color:#0f5273; color: white; padding: 10px 0; margin-top: 10px; text-align: center; border-radius: 5px;">
-          <button type="button" class="btn" id="GitHub">Submit</button>
+          <button type="button" class="btn" id="submitGithubSettings">Submit</button>
         </div>
       </form>
     </div>
@@ -76,7 +134,7 @@
   const repoOwner = localStorage.getItem("repoOwner");
   const repoName = localStorage.getItem("repoName");
 
-  async function fetchSprintStats() {
+  async function fetchProjectData() {
     const query = generateGraphQLQuery(null);
 
     const response = await fetch('https://api.github.com/graphql', {
@@ -119,17 +177,22 @@
       return Number(a.sprint.title) - Number(b.sprint.title);
     });
 
-    const tableBody = document.querySelector('#statsTable tbody');
+    return issues;
+  }
+
+  function printSprintStats(sprint) {
+    document.getElementById('sprintStats').style.display = 'block';
+    document.getElementById('assigneeStats').style.display = 'none';
+    document.getElementById('sprintStatsTableData').innerHTML = '';
+    const issues = JSON.parse(localStorage.getItem("issues"));
+    const tableBody = document.querySelector('#sprintStatsTable tbody');
     issues.filter(issue => issue.sprint && issue.content.number)
+      .filter(issue => sprint === issue.sprint.title)
       .forEach(issue => {
         const row = document.createElement('tr');
         if (issue.estimate === null) {
           row.classList.add('no-estimate');
         }
-
-        const sprintCell = document.createElement('td');
-        sprintCell.textContent = issue.sprint ? issue.sprint.title : 'N/A';
-        row.appendChild(sprintCell);
 
         const idCell = document.createElement('td');
         idCell.textContent = issue.content.number;
@@ -167,11 +230,103 @@
       });
   }
 
-  if (localStorage.getItem("token") != null &&
-    localStorage.getItem("repoOwner") != null &&
-    localStorage.getItem("repoName") != null) {
-    fetchSprintStats();
+  function printAssigneeStats(sprint) {
+    document.getElementById('sprintStats').style.display = 'none';
+    document.getElementById('assigneeStats').style.display = 'block';
+    document.getElementById('assigneeStatsTableData').innerHTML = '';
+    const issues = JSON.parse(localStorage.getItem("issues"));
+    const tableBody = document.querySelector('#assigneeStatsTable tbody');
+    issues.filter(issue => issue.content.assignees && issue.content.assignees.nodes[0])
+      .filter(issue => sprint === issue.content.assignees.nodes[0].login)
+      .forEach(issue => {
+        const row = document.createElement('tr');
+        if (issue.estimate === null) {
+          row.classList.add('no-estimate');
+        }
+
+        const sprintCell = document.createElement('td');
+        sprintCell.textContent = issue.sprint ? issue.sprint.title : 'N/A';
+        row.appendChild(sprintCell);
+
+        const idCell = document.createElement('td');
+        idCell.textContent = issue.content.number;
+        row.appendChild(idCell);
+
+        const ticketCell = document.createElement('td');
+        const issueLink = document.createElement('a');
+        issueLink.href = issue.content.url;
+        issueLink.textContent = issue.content.title;
+        issueLink.target = '_blank';
+        issueLink.classList.add('link');
+        ticketCell.appendChild(issueLink);
+        row.appendChild(ticketCell);
+
+        const estimatedTimeCell = document.createElement('td');
+        estimatedTimeCell.textContent = issue.estimate ? issue.estimate.number : 'N/A';
+        row.appendChild(estimatedTimeCell);
+
+        const timeInProgressCell = document.createElement('td');
+        timeInProgressCell.textContent = issue.consumed ? issue.consumed.number : 'N/A';
+        if (issue.estimate && issue.consumed) {
+          if (issue.estimate.number < issue.consumed.number) {
+            timeInProgressCell.classList.add('more-time');
+          } else {
+            timeInProgressCell.classList.add('less-time');
+          }
+        }
+        row.appendChild(timeInProgressCell);
+
+        tableBody.appendChild(row);
+      });
   }
+
+  async function firstFetch() {
+    if (localStorage.getItem("token") != null &&
+      localStorage.getItem("repoOwner") != null &&
+      localStorage.getItem("repoName") != null) {
+      const issues = await fetchProjectData();
+      localStorage.setItem("issues", JSON.stringify(issues));
+
+      const sprints = issues.filter(issue => issue.sprint)
+        .map(issue => issue.sprint)
+        .filter((value, index, self) => self.indexOf(value) === index);
+      sprints.sort(function (a, b) {
+        return Number(a.title) - Number(b.title);
+      });
+      sprints.forEach(sprint => {
+        const option = document.createElement('option');
+        option.value = sprint.title;
+        option.textContent = sprint.title;
+        document.getElementById('sprint').appendChild(option);
+      });
+
+      const assignees = issues.filter(issue => issue.content.assignees && issue.content.assignees.nodes[0])
+        .map(issue => issue.content.assignees.nodes[0].login)
+        .filter((value, index, self) => self.indexOf(value) === index);
+      assignees.sort();
+      assignees.forEach(assignee => {
+        const option = document.createElement('option');
+        option.value = assignee;
+        option.textContent = assignee;
+        document.getElementById('assignee').appendChild(option);
+      });
+
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('filter-section').style.display = '';
+
+      document.getElementById('sprint').addEventListener('change', function () {
+        const sprint = document.getElementById('sprint').value;
+        printSprintStats(sprint);
+      });
+
+      document.getElementById('assignee').addEventListener('change', function () {
+        const assignee = document.getElementById('assignee').value;
+        printAssigneeStats(assignee);
+      });
+    }
+  }
+
+  firstFetch();
 </script>
 </body>
 </html>
