@@ -62,22 +62,22 @@
     </table>
   </div>
   <div class="container max-w-8xl mx-auto m-8" id="assigneeStats" style="display: none">
-    <h3>Global</h3>
+    <h2 class="text-xl font-bold">Global</h2>
     <div class="container max-w-8xl mx-auto m-8 grid gap-4 grid-cols-3">
       <div>
-        <label for="assigneeTotalEstime" class="mr-8">Total estimé</label>
+        <label for="assigneeTotalEstime" class="mr-8 font-bold">Total estimé</label>
         <input id="assigneeTotalEstime" value="" readonly />
       </div>
       <div>
-        <label for="assigneeTotalPasse" class="mr-8">Total passé</label>
+        <label for="assigneeTotalPasse" class="mr-8 font-bold">Total passé</label>
         <input id="assigneeTotalPasse" value="" readonly />
       </div>
       <div>
-        <label for="assigneeMoyenneEcart" class="mr-8">Moyenne écart</label>
+        <label for="assigneeMoyenneEcart" class="mr-8 font-bold">Moyenne écart</label>
         <input id="assigneeMoyenneEcart" value="" readonly />
       </div>
     </div>
-    <h3>Par sprint</h3>
+    <h2 class="text-xl mb-6 font-bold">Par sprint</h2>
     <table id="assigneeSprintTable">
       <thead>
       <tr>
@@ -89,7 +89,7 @@
       <tbody id="assigneeSprintTableData">
       </tbody>
     </table>
-    <h3>Détails</h3>
+    <h2 class="mt-10 mb-6 text-xl font-bold">Détails</h2>
     <table id="assigneeStatsTable">
       <thead>
       <tr>
@@ -234,11 +234,37 @@
     document.getElementById('sprintStats').style.display = 'none';
     document.getElementById('assigneeStats').style.display = 'block';
     document.getElementById('assigneeStatsTableData').innerHTML = '';
+    document.getElementById('assigneeSprintTableData').innerHTML = '';
+
     const issues = JSON.parse(localStorage.getItem("issues"));
     const tableBody = document.querySelector('#assigneeStatsTable tbody');
+    let totalEstime = 0;
+    let totalPasse = 0;
+    let nbIssues = 0;
+    const sprintStats = [];
+
     issues.filter(issue => issue.content.assignees && issue.content.assignees.nodes[0])
       .filter(issue => sprint === issue.content.assignees.nodes[0].login)
       .forEach(issue => {
+        if (issue.estimate && issue.consumed) {
+          nbIssues++;
+          totalEstime += issue.estimate.number;
+          totalPasse += issue.consumed.number;
+
+          if (issue.sprint) {
+            const sprintIndex = sprintStats.findIndex(sprintStat => sprintStat.sprint === issue.sprint.title);
+            if (sprintIndex === -1) {
+              sprintStats.push({
+                sprint: issue.sprint.title,
+                totalEstime: issue.estimate ? issue.estimate.number : 0,
+                totalPasse: issue.consumed ? issue.consumed.number : 0
+              });
+            } else {
+              sprintStats[sprintIndex].totalEstime += issue.estimate ? issue.estimate.number : 0;
+            }
+          }
+        }
+
         const row = document.createElement('tr');
         if (issue.estimate === null) {
           row.classList.add('no-estimate');
@@ -278,6 +304,30 @@
 
         tableBody.appendChild(row);
       });
+
+    document.getElementById('assigneeTotalEstime').value = Number.parseFloat(totalEstime).toFixed(1);
+    document.getElementById('assigneeTotalPasse').value = Number.parseFloat(totalPasse).toFixed(1);
+    document.getElementById('assigneeMoyenneEcart').value = Number.parseFloat((totalEstime - totalPasse) / nbIssues).toFixed(1);
+
+    const assigneeSprintTableBody = document.querySelector('#assigneeSprintTable tbody');
+    sprintStats.forEach(sprintStat => {
+      const row = document.createElement('tr');
+      const sprintCell = document.createElement('td');
+      sprintCell.textContent = sprintStat.sprint;
+      row.appendChild(sprintCell);
+      const estimatedTimeCell = document.createElement('td');
+      estimatedTimeCell.textContent = sprintStat.totalEstime;
+      row.appendChild(estimatedTimeCell);
+      const timeInProgressCell = document.createElement('td');
+      timeInProgressCell.textContent = sprintStat.totalPasse;
+      if (sprintStat.totalEstime < sprintStat.totalPasse) {
+        timeInProgressCell.classList.add('more-time');
+      } else {
+        timeInProgressCell.classList.add('less-time');
+      }
+      row.appendChild(timeInProgressCell);
+      assigneeSprintTableBody.appendChild(row);
+    });
   }
 
   async function firstFetch() {
@@ -288,15 +338,23 @@
       localStorage.setItem("issues", JSON.stringify(issues));
 
       const sprints = issues.filter(issue => issue.sprint)
-        .map(issue => issue.sprint)
+        .map(issue => issue.sprint.title)
         .filter((value, index, self) => self.indexOf(value) === index);
+
       sprints.sort(function (a, b) {
-        return Number(a.title) - Number(b.title);
+        if (a === null) {
+          return -1;
+        }
+        if (b === null) {
+          return 1;
+        }
+        return Number(b) - Number(a);
       });
+
       sprints.forEach(sprint => {
         const option = document.createElement('option');
-        option.value = sprint.title;
-        option.textContent = sprint.title;
+        option.value = sprint;
+        option.textContent = sprint;
         document.getElementById('sprint').appendChild(option);
       });
 
