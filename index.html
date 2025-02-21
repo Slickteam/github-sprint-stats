@@ -34,18 +34,19 @@
   </div>
   <div class="container max-w-8xl mx-auto m-8 grid gap-4 grid-cols-2" id="filter-section" style="display: none">
     <div>
-      <label for="sprint" class="mr-8">Sprint</label>
+      <label for="sprint" class="mr-8 font-bold">Sprint</label>
       <select id="sprint" class="form-select">
         <option value="">Sélectionner un sprint</option>
       </select>
     </div>
     <div>
-      <label for="assignee" class="mr-8">Personne</label>
+      <label for="assignee" class="mr-8 font-bold">Personne</label>
       <select id="assignee" class="form-select">
         <option value="">Sélectionner une personne</option>
       </select>
     </div>
   </div>
+  <hr/>
   <div class="container max-w-8xl mx-auto m-8" id="sprintStats" style="display: none">
     <table id="sprintStatsTable">
       <thead>
@@ -62,7 +63,8 @@
     </table>
   </div>
   <div class="container max-w-8xl mx-auto m-8" id="assigneeStats" style="display: none">
-    <h2 class="text-xl font-bold">Global</h2>
+    <span>Pour les stats globales et par sprint, seuls les tickets ayant une estimation et un temps passé renseignés sont pris en compte dans le calcul.</span>
+    <h2 class="text-xl font-bold mt-6">Global</h2>
     <div class="container max-w-8xl mx-auto m-8 grid gap-4 grid-cols-3">
       <div>
         <label for="assigneeTotalEstime" class="mr-8 font-bold">Total estimé</label>
