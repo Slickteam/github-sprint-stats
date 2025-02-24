@@ -84,6 +84,8 @@
       <thead>
       <tr>
         <th>Sprint</th>
+        <th>Total tâches</th>
+        <th>Tâches estimées</th>
         <th>Temps estimé</th>
         <th>Temps passé</th>
       </tr>
@@ -259,10 +261,32 @@
               sprintStats.push({
                 sprint: issue.sprint.title,
                 totalEstime: issue.estimate ? issue.estimate.number : 0,
-                totalPasse: issue.consumed ? issue.consumed.number : 0
+                totalPasse: issue.consumed ? issue.consumed.number : 0,
+                totalIssues: 1,
+                nbIssues: issue.estimate && issue.consumed ? 1 : 0,
               });
             } else {
               sprintStats[sprintIndex].totalEstime += issue.estimate ? issue.estimate.number : 0;
+              sprintStats[sprintIndex].totalPasse += issue.consumed ? issue.consumed.number : 0;
+              sprintStats[sprintIndex].totalIssues++;
+              sprintStats[sprintIndex].nbIssues++;
+            }
+          }
+        } else {
+          if (issue.sprint) {
+            const sprintIndex = sprintStats.findIndex(sprintStat => sprintStat.sprint === issue.sprint.title);
+            if (sprintIndex === -1) {
+              sprintStats.push({
+                sprint: issue.sprint.title,
+                totalEstime: 0,
+                totalPasse: 0,
+                totalIssues: 1,
+                nbIssues: 0
+              });
+            } else {
+              sprintStats[sprintIndex].totalEstime += issue.estimate ? issue.estimate.number : 0;
+              sprintStats[sprintIndex].totalPasse += issue.consumed ? issue.consumed.number : 0;
+              sprintStats[sprintIndex].totalIssues++;
             }
           }
         }
@@ -317,6 +341,12 @@
       const sprintCell = document.createElement('td');
       sprintCell.textContent = sprintStat.sprint;
       row.appendChild(sprintCell);
+      const totalIssuesCell = document.createElement('td');
+      totalIssuesCell.textContent = sprintStat.totalIssues;
+      row.appendChild(totalIssuesCell);
+      const nbIssuesCell = document.createElement('td');
+      nbIssuesCell.textContent = sprintStat.nbIssues;
+      row.appendChild(nbIssuesCell);
       const estimatedTimeCell = document.createElement('td');
       estimatedTimeCell.textContent = sprintStat.totalEstime;
       row.appendChild(estimatedTimeCell);
